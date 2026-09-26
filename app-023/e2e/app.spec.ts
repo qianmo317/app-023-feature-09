@@ -14,6 +14,99 @@ test.describe('曲目列表', () => {
     await expect(page.getByTestId('score-title')).toHaveValue('E2E 开道锣');
     await expect(page.getByTestId('grid')).toBeVisible();
   });
+
+  async function createByName(page: Page, name: string) {
+    await page.goto('#/');
+    await page.getByTestId('new-title').fill(name);
+    await page.getByTestId('btn-create').click();
+    await page.waitForURL(/#\/score\/sc_/);
+    await page.goto('#/');
+  }
+
+  test('关键字按曲名/流派即时筛选并显示份数', async ({ page }) => {
+    await createByName(page, 'E2E 筛选甲');
+    await page.goto('#/library');
+    await page.getByTestId('load-jijifeng').click(); // 急急风，流派含「京剧」
+    await page.goto('#/');
+
+    await expect(page.getByTestId('list-count')).toContainText('共 2 份，当前显示 2 份');
+
+    await page.getByTestId('filter-keyword').fill('筛选甲');
+    await expect(page.locator('[data-testid^="score-row-"]')).toHaveCount(1);
+    await expect(page.getByTestId('list-count')).toContainText('共 2 份，当前显示 1 份');
+
+    // 清掉曲名关键字，改按流派片段筛
+    await page.getByTestId('filter-keyword').fill('');
+    await page.getByTestId('filter-keyword').fill('京剧');
+    await expect(page.locator('[data-testid^="score-row-"]')).toHaveCount(1);
+    await expect(page.locator('tr', { hasText: '急急风' })).toBeVisible();
+
+    // 无匹配
+    await page.getByTestId('filter-keyword').fill('不存在的曲名xyz');
+    await expect(page.getByTestId('list-empty-filter')).toBeVisible();
+    await expect(page.getByTestId('list-count')).toContainText('当前显示 0 份');
+  });
+
+  test('排序可选速度并切换正序/倒序', async ({ page }) => {
+    await createByName(page, 'E2E 慢速曲'); // 空谱 BPM 100
+    await page.goto('#/library');
+    await page.getByTestId('load-jijifeng').click(); // BPM 152
+    await page.goto('#/');
+
+    const rows = () => page.locator('[data-testid^="score-row-"]');
+    await page.getByTestId('sort-key').selectOption('bpm');
+
+    // 默认倒序：急急风（152）在前
+    await expect(page.getByTestId('sort-dir')).toContainText('倒序');
+    await expect(rows().first()).toContainText('急急风');
+
+    // 切正序：慢速曲（100）在前
+    await page.getByTestId('sort-dir').click();
+    await expect(page.getByTestId('sort-dir')).toContainText('正序');
+    await expect(rows().first()).toContainText('E2E 慢速曲');
+    await expect(rows().last()).toContainText('急急风');
+  });
+
+  test('整份复制：副本带字样、内容独立、只删被点的那份', async ({ page }) => {
+    await createEmptyScore(page, 'E2E 复制原谱');
+    await page.getByTestId('grid-cell-0-0').click();
+    await page.keyboard.type('z');
+    await expect(page.getByTestId('grid-glyph-0-0-gu')).toBeVisible();
+    await page.waitForTimeout(800); // 等自动保存
+    await page.goto('#/');
+
+    const origRow = page.locator('tr', { has: page.getByRole('link', { name: 'E2E 复制原谱', exact: true }) });
+    await origRow.getByTestId(/^dup-sc_/).click();
+
+    // 列表里原谱与副本都在
+    await expect(page.getByRole('link', { name: 'E2E 复制原谱', exact: true })).toBeVisible();
+    const copyLink = page.getByRole('link', { name: 'E2E 复制原谱 副本', exact: true });
+    await expect(copyLink).toBeVisible();
+
+    // 副本内容与原谱一致（打开即有「咚」字）
+    await copyLink.click();
+    await expect(page.getByTestId('score-title')).toHaveValue('E2E 复制原谱 副本');
+    await expect(page.getByTestId('grid-glyph-0-0-gu')).toBeVisible();
+
+    // 改副本不影响原谱：副本加一个小锣「才」
+    await page.getByTestId('grid-cell-0-4').click();
+    await page.keyboard.type('a');
+    await expect(page.getByTestId('grid-glyph-0-4-xiaoluo')).toBeVisible();
+    await page.waitForTimeout(800);
+    await page.goto('#/');
+    await page.getByRole('link', { name: 'E2E 复制原谱', exact: true }).click();
+    await expect(page.getByTestId('grid-glyph-0-4-xiaoluo')).toHaveCount(0);
+
+    // 删除原谱（二次确认），副本仍在
+    await page.goto('#/');
+    page.once('dialog', (d) => d.accept());
+    await page
+      .locator('tr', { has: page.getByRole('link', { name: 'E2E 复制原谱', exact: true }) })
+      .getByTestId(/^del-sc_/)
+      .click();
+    await expect(page.getByRole('link', { name: 'E2E 复制原谱', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'E2E 复制原谱 副本', exact: true })).toBeVisible();
+  });
 });
 
 test.describe('录入与齐奏', () => {

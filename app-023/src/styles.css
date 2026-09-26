@@ -53,6 +53,13 @@ h2 { font-size: 16px; margin: 18px 0 6px; border-left: 3px solid var(--red); pad
 .score-link { color: var(--ink); text-decoration: none; font-weight: 600; }
 .score-link:hover { color: var(--red); }
 
+.list-tools { display: flex; gap: 10px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
+.keyword-input {
+  border: 1px solid var(--border); padding: 6px 10px; border-radius: 4px; min-width: 240px; font-size: 14px;
+}
+.list-tools select { border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; font-size: 14px; margin-left: 4px; }
+.list-count { margin-left: auto; white-space: nowrap; }
+
 /* ---- 编辑器 ---- */
 .editor-page { display: flex; flex-direction: column; height: 100vh; outline: none; }
 .editor-header {

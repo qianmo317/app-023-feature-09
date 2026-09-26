@@ -98,3 +98,12 @@ export function newEmptyScore(title: string, beatsPerBar = 4, barCount = 4, inst
     updatedAt: Date.now(),
   };
 }
+
+/** 整份复制：新 id、曲名加「副本」、内容深拷贝，此后两份各自编辑互不影响 */
+export function duplicateScore(src: Score): Score {
+  const copy: Score = structuredClone(src);
+  copy.id = newId();
+  copy.title = `${src.title} 副本`;
+  copy.updatedAt = Date.now();
+  return copy;
+}
