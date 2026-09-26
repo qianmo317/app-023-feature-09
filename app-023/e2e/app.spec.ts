@@ -14,7 +14,97 @@ test.describe('曲目列表', () => {
     await expect(page.getByTestId('score-title')).toHaveValue('E2E 开道锣');
     await expect(page.getByTestId('grid')).toBeVisible();
   });
+
+  test('关键字按曲名/流派即时筛选，计数随之更新', async ({ page }) => {
+    await createEmptyScore(page, 'E2E 筛甲');
+    await page.goto('#/');
+    await createEmptyScore(page, 'E2E 筛乙');
+    await page.goto('#/library');
+    await page.getByTestId('load-jijifeng').click(); // 流派「通用 · 京剧/威风锣鼓」
+    await expect(page.getByTestId('editor-page')).toBeVisible();
+    await page.goto('#/');
+    await expect(page.getByTestId('list-count')).toHaveText('共 3 份 · 当前显示 3 份');
+
+    // 按曲名片段：列表立刻只剩一份
+    await page.getByTestId('filter-keyword').fill('筛甲');
+    await expect(page.getByTestId('list-count')).toHaveText('共 3 份 · 当前显示 1 份');
+    await expect(page.locator('[data-testid="score-table"] tbody tr')).toHaveCount(1);
+    await expect(page.locator('tr', { hasText: 'E2E 筛乙' })).toHaveCount(0);
+
+    // 改按流派片段筛
+    await page.getByTestId('filter-keyword').fill('京剧');
+    await expect(page.getByTestId('list-count')).toContainText('当前显示 1 份');
+    await expect(page.locator('tr', { hasText: '急急风' })).toBeVisible();
+
+    // 清空关键字恢复全部
+    await page.getByTestId('filter-keyword').fill('');
+    await expect(page.getByTestId('list-count')).toContainText('当前显示 3 份');
+
+    // 无匹配时提示且计数为 0
+    await page.getByTestId('filter-keyword').fill('不存在的曲名');
+    await expect(page.getByTestId('list-count')).toContainText('当前显示 0 份');
+    await expect(page.getByTestId('no-match')).toBeVisible();
+  });
+
+  test('排序可在曲名/小节数等字段间切换，正倒序可切', async ({ page }) => {
+    // 建立顺序：C（8 小节）→ A（4 小节）→ B（4 小节），默认按更新时间倒序为 B,A,C
+    await createEmptyScore(page, 'C 排序谱');
+    await page.getByRole('button', { name: '+4 小节' }).click();
+    await expect(page.locator('[data-testid^="grid-bar-"]')).toHaveCount(8);
+    await page.waitForTimeout(800); // 等自动保存
+    await page.goto('#/');
+    await createEmptyScore(page, 'A 排序谱');
+    await page.goto('#/');
+    await createEmptyScore(page, 'B 排序谱');
+    await page.goto('#/');
+
+    const rowTitles = () =>
+      page.locator('[data-testid="score-table"] tbody tr .score-link').allTextContents();
+
+    await expect.poll(rowTitles).toEqual(['B 排序谱', 'A 排序谱', 'C 排序谱']);
+
+    // 按曲名（当前倒序）→ C,B,A；切正序 → A,B,C
+    await page.getByTestId('sort-key').selectOption('title');
+    await expect.poll(rowTitles).toEqual(['C 排序谱', 'B 排序谱', 'A 排序谱']);
+    await page.getByTestId('sort-dir').click();
+    await expect.poll(rowTitles).toEqual(['A 排序谱', 'B 排序谱', 'C 排序谱']);
+
+    // 按小节数：正序两个 4 小节在前（同值稳定保序，沿用列表的更新时间倒序 B 在 A 前），8 小节的 C 垫底
+    await page.getByTestId('sort-key').selectOption('bars');
+    await expect.poll(rowTitles).toEqual(['B 排序谱', 'A 排序谱', 'C 排序谱']);
+    await page.getByTestId('sort-dir').click();
+    await expect.poll(rowTitles).toEqual(['C 排序谱', 'B 排序谱', 'A 排序谱']);
+  });
+
+  test('整份复制：副本带「副本」字样、内容一致、各自独立', async ({ page }) => {
+    await createEmptyScore(page, 'E2E 复制源');
+    await page.getByTestId('grid-cell-0-0').click();
+    await page.keyboard.type('z');
+    await expect(page.getByTestId('grid-glyph-0-0-gu')).toBeVisible();
+    await page.waitForTimeout(800); // 等自动保存
+    await page.goto('#/');
+
+    const srcRow = page.locator('tr', { hasText: 'E2E 复制源' });
+    await srcRow.getByTestId(/dup-sc_/).click();
+    await expect(page.getByTestId('list-count')).toContainText('共 2 份 · 当前显示 2 份');
+    const copyRow = page.locator('tr', { hasText: 'E2E 复制源（副本）' });
+    await expect(copyRow).toBeVisible();
+
+    // 打开副本：曲名带字样，谱面内容与原谱一致
+    await copyRow.locator('.score-link').click();
+    await expect(page.getByTestId('score-title')).toHaveValue('E2E 复制源（副本）');
+    await expect(page.getByTestId('grid-glyph-0-0-gu')).toBeVisible();
+
+    // 改副本不影响原谱
+    await page.getByTestId('score-title').fill('E2E 副本改名');
+    await page.waitForTimeout(800);
+    await page.goto('#/');
+    await expect(page.locator('tr', { hasText: 'E2E 副本改名' })).toBeVisible();
+    await expect(page.locator('tr', { hasText: 'E2E 复制源（副本）' })).toHaveCount(0);
+    await expect(page.locator('tr', { hasText: 'E2E 复制源' })).toHaveCount(1);
+  });
 });
+
 
 test.describe('录入与齐奏', () => {
   test('点击格子 + 键盘落字 + 数字换时值 + 休止', async ({ page }) => {

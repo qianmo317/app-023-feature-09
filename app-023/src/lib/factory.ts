@@ -86,6 +86,15 @@ export function scoreFromPattern(p: PatternDef, instruments: Instrument[] = DEFA
   };
 }
 
+/** 整份复制：深拷贝 + 新 id + 曲名加「副本」，复制件与原谱各自改各自、互不影响 */
+export function cloneScore(src: Score, title?: string): Score {
+  const copy: Score = JSON.parse(JSON.stringify(src)) as Score;
+  copy.id = newId();
+  copy.title = title ?? `${src.title}（副本）`;
+  copy.updatedAt = Date.now();
+  return copy;
+}
+
 export function newEmptyScore(title: string, beatsPerBar = 4, barCount = 4, instruments = DEFAULT_INSTRUMENTS): Score {
   const bars: Bar[] = Array.from({ length: barCount }, (_, i) => emptyBar(i, beatsPerBar));
   return {

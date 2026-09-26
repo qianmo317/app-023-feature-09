@@ -48,6 +48,12 @@ h2 { font-size: 16px; margin: 18px 0 6px; border-left: 3px solid var(--red); pad
   border: 1px solid var(--border); padding: 6px 10px; border-radius: 4px; min-width: 220px;
 }
 .list { width: 100%; border-collapse: collapse; margin: 10px 0; }
+.list-tools { display: flex; gap: 10px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+.list-tools input {
+  border: 1px solid var(--border); padding: 6px 10px; border-radius: 4px; min-width: 200px;
+}
+.list-tools select { border: 1px solid var(--border); padding: 5px 8px; border-radius: 4px; background: #fff; }
+.list-tools .btn { padding: 5px 12px; min-width: 84px; }
 .list th, .list td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); font-size: 14px; }
 .list th { color: var(--dim); font-weight: 500; }
 .score-link { color: var(--ink); text-decoration: none; font-weight: 600; }

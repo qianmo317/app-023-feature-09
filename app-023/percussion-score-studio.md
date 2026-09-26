@@ -37,7 +37,7 @@
 自研 hash 路由，解析在 `src/App.tsx`。
 
 ```
-#/                    曲目列表：新建空白谱（曲名+拍号+散板）/ 进曲牌库 / 列表（曲名·流派·拍号·小节·BPM·更新时间·打印·删除）
+#/                    曲目列表：新建空白谱（曲名+拍号+散板）/ 进曲牌库 / 关键字筛选（曲名·流派）/ 排序（更新时间·曲名·小节数·BPM，正倒序可切）/ 列表（曲名·流派·拍号·小节·BPM·更新时间·打印·复制·删除）
 #/score/:id           编辑器：顶栏（标题/流派/拍号/散板/±小节/出谱打印）+ 左乐器面板 + 中时值条与 SVG 谱面 + 下试听控制台
 #/score/:id/print     打印视图：A4 横向、简谱对照开关、打印/导出 PDF、导出 PNG（不套顶部导航）
 #/library             曲牌库：6 张骨架卡（载入并编辑）+ 拟音字表（音色/基频/衰减）
@@ -90,12 +90,12 @@ IndexedDB 库名 `app023-percussion`，对象仓 `scores`（keyPath `id`，索�
 - 窄屏（≤760px）编辑区改为纵向，乐器面板横向滚动，隐藏面板标题与提示。
 
 ## 10. 验收标准
-- 单元测试 58 例全绿：`tests/grid.test.ts` 26 例、`tests/glyphs.test.ts` 18 例、`tests/scheduler.test.ts` 9 例、`tests/storage.test.ts` 5 例。
+- 单元测试 73 例全绿：`tests/grid.test.ts` 26 例、`tests/glyphs.test.ts` 18 例、`tests/scheduler.test.ts` 9 例、`tests/storage.test.ts` 5 例、`tests/scoreQuery.test.ts` 15 例（筛选/排序/整份复制）。
 - 时值换算：整拍 4 / 半拍 2 / ¼ 拍 1 / 附点 6 / 附点半拍 3；4/4 = 16 格、2/4 = 8 格、3/4 = 12 格；不满小节被校验判为错误。
 - 调度精度：BPM 120 连续 240 拍，每击时刻与「整数格 × 固定每格秒数」的独立重算结果完全一致，相邻间隔偏差 < 1e-9s（验收线 10ms），末击无累积漂移。
 - 齐奏：同一步内鼓、大锣、钹三击的时间集合大小 = 1，完全同刻而非近似。
 - 曲牌健壮性：6 个内置骨架经 `scoreFromPattern` 转换后 `validateScore` 与 `validateHitGlyphs` 均返回空数组。
-- E2E 13 例：建谱 → 录入 → 齐奏同列（三字中心 x 差 < 1px）→ 播放高亮 → BPM 加减 → 刷新不丢 → 打印视图 4 小节一行且 SVG 宽度 ≤ 1047+64+2 → 改键位后刷新仍生效 → 100 小节谱面滚动 ≥ 50fps。
+- E2E 16 例：建谱 → 录入 → 齐奏同列（三字中心 x 差 < 1px）→ 播放高亮 → BPM 加减 → 刷新不丢 → 打印视图 4 小节一行且 SVG 宽度 ≤ 1047+64+2 → 改键位后刷新仍生效 → 100 小节谱面滚动 ≥ 50fps；列表筛选（曲名/流派即时过滤与计数）、四字段正倒序切换、整份复制（「副本」字样 + 内容一致 + 改副本不动原谱）。
 - Docker 容器内 `curl http://localhost:8103/healthz` 返回 200 与文本 `ok`。
 
 ## 11. 边界（刻意不做）
@@ -129,5 +129,5 @@ curl -I http://localhost:8103/          # 200 且 Cache-Control: no-cache
 docker compose down
 ```
 
-- 本地自检：`npm run build`（`tsc -b` 类型检查 + `vite build`）零错误；`npm test` 58 例全绿；`E2E_BASE_URL=http://localhost:8103 npx playwright test` 可对容器复跑 13 例 E2E。
+- 本地自检：`npm run build`（`tsc -b` 类型检查 + `vite build`）零错误；`npm test` 73 例全绿；`E2E_BASE_URL=http://localhost:8103 npx playwright test` 可对容器复跑 16 例 E2E。
 - 数据边界：曲目存在浏览器 IndexedDB，按源隔离，dev（5173）、preview（4174）、容器（8103）三处数据互不相通，属预期行为。
